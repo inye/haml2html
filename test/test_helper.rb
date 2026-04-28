@@ -6,12 +6,11 @@ end
 
 require "bundler/setup"
 require "minitest/autorun"
-require "minitest/unit"
 require "html2haml"
 require 'html2haml/html'
 require 'html2haml/html/erb'
 
-class Minitest::Unit::TestCase
+class Minitest::Test
   protected
   def render(text, options = {})
     Html2haml::HTML.new(text, options).render.rstrip

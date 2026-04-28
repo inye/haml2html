@@ -1,7 +1,7 @@
 # encoding: UTF-8
 require 'test_helper'
 
-class Html2HamlTest < Minitest::Unit::TestCase
+class Html2HamlTest < Minitest::Test
   def test_empty_render_should_remain_empty
     assert_equal '', render('')
   end
