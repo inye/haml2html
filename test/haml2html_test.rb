@@ -79,6 +79,17 @@ class Haml2HtmlTest < Minitest::Test
       render_html('%div{:id => "foo#bar"}')
   end
 
+  def test_class_shorthand_merges_with_dynamic_class_hash
+    # In non-ERB mode the dynamic class collapses to empty; static must still be emitted alone.
+    assert_equal '<li class="pb-2"></li>',
+      render_html('%li.pb-2{:class => is_current ? "bg-orange-500" : "bg-white"}')
+  end
+
+  def test_id_shorthand_merges_with_dynamic_id_hash
+    assert_equal '<li id="a"></li>',
+      render_html('%li#a{:id => suffix}')
+  end
+
   def test_interpolation
     assert_equal 'Foo #{bar} baz', render_html('Foo \#{bar} baz')
   end

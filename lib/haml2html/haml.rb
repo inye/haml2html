@@ -268,39 +268,53 @@ module Haml2html
 
     # Attribute rendering
 
+    # `class` and `id` from .class/#id shorthand and from `:class`/`:id` hash
+    # entries must collapse to a single attribute (HTML5 forbids duplicate
+    # attribute names — browsers keep the first and drop the rest). Haml itself
+    # merges these: classes join with " ", ids with "_".
+    MERGED_ATTRS = { "class" => " ", "id" => "_" }.freeze
+
     def render_attributes(static, dynamic)
-      pairs = []
-      (static || {}).each { |name, value| pairs << render_static_attr(name, value) }
-      if dynamic
-        pairs.concat(parse_dynamic_attrs(dynamic.old))  if dynamic.old
-        pairs.concat(parse_dynamic_attrs(dynamic.new, html_style: true)) if dynamic.new
+      parts = []
+      index = {}
+      push = lambda do |name, quoted|
+        if (sep = MERGED_ATTRS[name]) && (i = index[name])
+          parts[i] = [name, merge_quoted_values(parts[i][1], quoted, sep)]
+        else
+          index[name] = parts.length
+          parts << [name, quoted]
+        end
       end
-      pairs.empty? ? "" : " " + pairs.join(" ")
+      (static || {}).each { |name, value| push.call(name, %("#{html_escape(value.to_s)}")) }
+      if dynamic
+        parse_dynamic_attr_pairs(dynamic.old).each { |n, v| push.call(n, v) } if dynamic.old
+        parse_dynamic_attr_pairs(dynamic.new).each { |n, v| push.call(n, v) } if dynamic.new
+      end
+      parts.empty? ? "" : " " + parts.map { |n, v| "#{n}=#{v}" }.join(" ")
     end
 
-    def render_static_attr(name, value)
-      %(#{name}="#{html_escape(value.to_s)}")
+    def merge_quoted_values(a, b, sep)
+      inner_a = a[1..-2]
+      inner_b = b[1..-2]
+      return a if inner_b.empty?
+      return b if inner_a.empty?
+      %("#{inner_a}#{sep}#{inner_b}")
     end
 
     def html_escape(str)
       CGI.escapeHTML(str.to_s)
     end
 
-    # Parse a Ruby hash literal source and emit attribute strings, converting
-    # dynamic Ruby values into ERB interpolations when in erb mode.
-    def parse_dynamic_attrs(src, html_style: false)
-      ruby = parse_hash_source(src, html_style)
+    # Parse a Ruby hash literal source into [name, quoted_value] pairs,
+    # converting dynamic Ruby values into ERB interpolations when in erb mode.
+    def parse_dynamic_attr_pairs(src)
+      ruby = parse_hash_source(src)
       return [] unless ruby
-      hash_pairs(ruby).map { |k, v| "#{attr_name_from_sexp(k)}=#{attr_value_from_sexp(v)}" }
+      hash_pairs(ruby).map { |k, v| [attr_name_from_sexp(k), attr_value_from_sexp(v)] }
     end
 
-    def parse_hash_source(src, html_style)
-      if html_style
-        # HTML-style attrs: src looks like '{"class" => foo,"id" => bar,}' (already hash-like)
-        ::RubyParser.for_current_ruby.parse(src)
-      else
-        ::RubyParser.for_current_ruby.parse(src)
-      end
+    def parse_hash_source(src)
+      ::RubyParser.for_current_ruby.parse(src)
     rescue Racc::ParseError, ::RubyParser::SyntaxError
       nil
     end

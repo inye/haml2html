@@ -80,6 +80,31 @@ HAML
       render_html_erb('%div{:class => "#{12} + #{13}"} Math is super')
   end
 
+  def test_class_shorthand_merges_with_dynamic_class_hash
+    assert_equal '<li class="pb-2 <%= is_current ? ("bg-orange-500") : ("bg-white") %>"></li>',
+      render_html_erb('%li.pb-2{:class => is_current ? "bg-orange-500" : "bg-white"}')
+  end
+
+  def test_class_shorthand_merges_with_dynamic_class_html_style
+    assert_equal '<li class="pb-2 <%= foo %>"></li>',
+      render_html_erb('%li.pb-2(class=foo)')
+  end
+
+  def test_id_shorthand_merges_with_dynamic_id_hash
+    assert_equal '<li id="a_<%= suffix %>"></li>',
+      render_html_erb('%li#a{:id => suffix}')
+  end
+
+  def test_class_and_id_shorthand_merge_with_all_dynamic_hash
+    assert_equal '<li id="a_<%= y %>" class="pb-2 <%= x %>"></li>',
+      render_html_erb('%li#a.pb-2{:class => x, :id => y}')
+  end
+
+  def test_class_shorthand_merges_with_mixed_static_and_dynamic_hash
+    assert_equal '<li class="pb-2 static" id="<%= foo_id %>"></li>',
+      render_html_erb('%li.pb-2{:class => "static", id: foo_id}')
+  end
+
   def test_interpolation_in_erb
     assert_equal '<%= "Foo #{bar} baz" %>', render_html_erb('= "Foo #{bar} baz"')
   end
