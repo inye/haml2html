@@ -183,6 +183,55 @@ MESSAGE
       end
     end
 
+    # The `haml2html` executable.
+    class Haml2HTML < Generic
+      def initialize(args)
+        super
+        @module_opts = {}
+      end
+
+      def set_opts(opts)
+        opts.banner = <<END
+Usage: haml2html [options] [INPUT] [OUTPUT]
+
+Description: Transforms a Haml file into corresponding HTML code.
+
+Options:
+END
+
+        opts.on('-e', '--erb', 'Emit ERB tags for `=`/`-`/`!=` and `#{...}`.') do
+          @module_opts[:erb] = true
+        end
+
+        opts.on('--no-erb', "Don't emit ERB tags.") do
+          @options[:no_erb] = true
+        end
+
+        opts.on('-E ex[:in]', 'Specify the default external and internal character encodings.') do |encoding|
+          external, internal = encoding.split(':')
+          Encoding.default_external = external if external && !external.empty?
+          Encoding.default_internal = internal if internal && !internal.empty?
+        end
+
+        super
+      end
+
+      def process_result
+        super
+        require 'haml2html'
+
+        input  = @options[:input]
+        output = @options[:output]
+
+        @module_opts[:erb] ||= input.respond_to?(:path) && input.path =~ /\.(rhtml|erb)\.haml\z|\.haml\.(rhtml|erb)\z/
+        @module_opts[:erb] &&= @options[:no_erb] != true
+
+        output.write(::Haml2html::Haml.new(input, @module_opts).render)
+      rescue LoadError => err
+        handle_load_error(err)
+      end
+    end
+
     # The `html2haml` executable.
     class HTML2Haml < Generic
       # @param args [Array<String>] The command-line arguments
